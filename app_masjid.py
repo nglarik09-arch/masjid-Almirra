@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+from PIL import Image
 
 # Konfigurasi Halaman Web
 st.set_page_config(
@@ -9,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Kustomisasi CSS agar Tampilan Lebih Modern & Estetik
+# Kustomisasi CSS Tampilan Modern
 st.markdown("""
     <style>
     .main {
@@ -29,7 +30,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Inisialisasi Data Default
+# Inisialisasi Data Default Donasi & Pengeluaran
 if "df_donasi" not in st.session_state:
     st.session_state.df_donasi = pd.DataFrame([
         {"Tanggal": "2026-08-27", "Nama Donatur": "Pak Mat (Kulon Kali)", "Alamat": "Nglarik Kalongan", "Kategori": "Material", "Jumlah/Nilai (Rp)": 1400000, "Keterangan": "1 Rit Pasir"},
@@ -47,8 +48,15 @@ if "df_keluar" not in st.session_state:
         {"Tanggal": "2026-09-12", "Keperluan": "Bayar Upah Tukang Minggu ke-1", "Kategori": "Upah Kerja", "Jumlah (Rp)": 1800000, "Penerima/Toko": "Mandor Pak Budi"}
     ])
 
-# Header Modern dengan Logo / Banner Ilustrasi
-col_logo, col_text = st.columns([1, 5])
+# Inisialisasi Data Galeri Foto Dokumentasi
+if "galeri_foto" not in st.session_state:
+    st.session_state.galeri_foto = [
+        {"judul": "Pekerjaan Pondasi Awal", "tanggal": "2026-08-25", "keterangan": "Penggalian dan pengecoran fondasi masjid.", "file": None},
+        {"judul": "Pengiriman Material Pasir", "tanggal": "2026-08-27", "keterangan": "Donasi material dari Pak Mat (Kulon Kali).", "file": None}
+    ]
+
+# Header Modern
+col_logo, col_text = st.columns([1, 6])
 with col_logo:
     st.markdown("# 🕌")
 with col_text:
@@ -59,7 +67,13 @@ st.markdown("---")
 
 # Sidebar Navigasi Menu
 st.sidebar.markdown("### 📌 Menu Navigasi")
-menu = st.sidebar.selectbox("Pilih Halaman", ["Dashboard & Ringkasan", "Catat Pemasukan (Donasi)", "Catat Pengeluaran Dana", "Data & Laporan Lengkap"])
+menu = st.sidebar.selectbox("Pilih Halaman", [
+    "Dashboard & Ringkasan", 
+    "Catat Pemasukan (Donasi)", 
+    "Catat Pengeluaran Dana", 
+    "Galeri Dokumentasi Foto", 
+    "Data & Laporan Lengkap"
+])
 
 # ================= 1. MENU DASHBOARD =================
 if menu == "Dashboard & Ringkasan":
@@ -69,7 +83,6 @@ if menu == "Dashboard & Ringkasan":
     total_keluar = st.session_state.df_keluar["Jumlah (Rp)"].sum()
     sisa_saldo = total_masuk - total_keluar
 
-    # Kartu Metrik Modern
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Pemasukan / Donasi", f"Rp {total_masuk:,.0f}")
     col2.metric("Total Pengeluaran", f"Rp {total_keluar:,.0f}")
@@ -141,7 +154,50 @@ elif menu == "Catat Pengeluaran Dana":
             else:
                 st.error("Mohon isi Keperluan dan Jumlah Biaya dengan benar.")
 
-# ================= 4. MENU LAPORAN LENGKAP =================
+# ================= 4. MENU GALERI DOKUMENTASI FOTO =================
+elif menu == "Galeri Dokumentasi Foto":
+    st.subheader("📸 Galeri Dokumentasi Progres Pembangunan")
+    st.markdown("Berikut adalah dokumentasi foto progres fisik pembangunan Masjid Almirra.")
+
+    # Form Upload Foto Baru (Khusus Admin/Pengurus)
+    with st.expander("➕ Unggah Foto Dokumentasi Baru"):
+        with st.form("form_foto", clear_on_submit=True):
+            judul_foto = st.text_input("Judul Kegiatan / Progres")
+            tgl_foto = st.date_input("Tanggal Dokumentasi", datetime.today())
+            ket_foto = st.text_area("Keterangan Singkat Foto")
+            file_upload = st.file_uploader("Pilih Berkas Foto (JPG / PNG)", type=["jpg", "jpeg", "png"])
+
+            submit_foto = st.form_submit_button("Upload Foto")
+
+            if submit_foto:
+                if judul_foto and file_upload is not None:
+                    new_galeri = {
+                        "judul": judul_foto,
+                        "tanggal": str(tgl_foto),
+                        "keterangan": ket_foto,
+                        "file": file_upload
+                    }
+                    st.session_state.galeri_foto.append(new_galeri)
+                    st.success("Foto dokumentasi berhasil diunggah!")
+                else:
+                    st.error("Mohon isi Judul dan pilih file foto terlebih dahulu.")
+
+    st.markdown("---")
+
+    # Tampilkan Galeri dalam Format Grid (Kolom)
+    cols = st.columns(2)
+    for idx, item in enumerate(st.session_state.galeri_foto):
+        with cols[idx % 2]:
+            st.markdown(f"### 📌 {item['judul']}")
+            st.markdown(f"**Tanggal:** {item['tanggal']}")
+            if item['file'] is not None:
+                st.image(item['file'], use_container_width=True)
+            else:
+                st.info("*(Ilustrasi/Contoh Dokumentasi)*")
+            st.write(item['keterangan'])
+            st.markdown("---")
+
+# ================= 5. MENU LAPORAN LENGKAP =================
 elif menu == "Data & Laporan Lengkap":
     st.subheader("📋 Laporan Keuangan & Daftar Donatur Masjid Almirra")
 
@@ -158,7 +214,5 @@ elif menu == "Data & Laporan Lengkap":
         st.markdown("### Rekapitulasi Pengeluaran")
         st.dataframe(st.session_state.df_keluar, use_container_width=True)
 
-        csv_keluar = st.session_state.df_keluar.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Unduh Laporan Pengeluaran (CSV)", csv_keluar, "laporan_pengeluaran_almirra.csv", "text/csv")
         csv_keluar = st.session_state.df_keluar.to_csv(index=False).encode('utf-8')
         st.download_button("📥 Unduh Laporan Pengeluaran (CSV)", csv_keluar, "laporan_pengeluaran_almirra.csv", "text/csv")

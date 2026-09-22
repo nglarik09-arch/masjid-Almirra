@@ -32,7 +32,7 @@ st.markdown("""
 
 # ================= INISIALISASI DATA SECURITY =================
 # Pengaturan kata sandi untuk pengurus masjid
-PASSWORD_PENGURUS = "masjidalmirra123"  # Silakan ubah password sesuai kebutuhan Anda
+PASSWORD_PENGURUS = "masjid123"  # Silakan ubah password sesuai kebutuhan Anda
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False

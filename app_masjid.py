@@ -46,7 +46,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ================= INISIALISASI DATA SECURITY =================
-PASSWORD_PENGURUS = "masjidalmirra123"
+PASSWORD_PENGURUS = "masjid123"
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
@@ -65,8 +65,8 @@ if "df_donasi" not in st.session_state:
 
 if "df_keluar" not in st.session_state:
     st.session_state.df_keluar = pd.DataFrame([
-        {"Tanggal": "2026-09-02", "Keperluan": "Pembelian Semen Tahap Awal", "Jumlah (Rp)": 4500000, "Kategori": "Material", "Penerima/Toko": "TB Maju Lancar"},
-        {"Tanggal": "2026-09-12", "Keperluan": "Bayar Upah Tukang Minggu ke-1", "Jumlah (Rp)": 3200000, "Kategori": "Upah Kerja", "Penerima/Toko": "Mandor Pak Budi"}
+        {"Tanggal": "2026-09-02", "Keperluan": "Pembelian Semen Tahap Awal", "Jumlah (Rp)": 0, "Kategori": "Material", "Penerima/Toko": "TB Maju Lancar"},
+        {"Tanggal": "2026-09-12", "Keperluan": "Bayar Upah Tukang Minggu ke-1", "Jumlah (Rp)": 0, "Kategori": "Upah Kerja", "Penerima/Toko": "Mandor Pak Budi"}
     ])
 
 if "galeri_foto" not in st.session_state:

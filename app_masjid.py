@@ -4,10 +4,30 @@ from datetime import datetime
 
 # Konfigurasi Halaman Web
 st.set_page_config(
-    page_title="Sistem Keuangan Masjid Almirra",
+    page_title="Pembangunan Masjid Almirra",
     page_icon="🕌",
     layout="wide"
 )
+
+# Kustomisasi CSS agar Tampilan Lebih Modern & Estetik
+st.markdown("""
+    <style>
+    .main {
+        background-color: #f8f9fa;
+    }
+    .stMetric {
+        background-color: #ffffff;
+        padding: 15px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        border-left: 5px solid #198754;
+    }
+    .header-title {
+        color: #198754;
+        font-weight: 700;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # Inisialisasi Data Default
 if "df_donasi" not in st.session_state:
@@ -23,17 +43,23 @@ if "df_donasi" not in st.session_state:
 
 if "df_keluar" not in st.session_state:
     st.session_state.df_keluar = pd.DataFrame([
-        {"Tanggal": "2026-09-02", "Keperluan": "Pembelian Semen Tahap Awal", "Kategori": "Material", "Jumlah (Rp)": 0, "Penerima/Toko": "TB Maju Lancar"},
-        {"Tanggal": "2026-09-12", "Keperluan": "Bayar Upah Tukang Minggu ke-1", "Kategori": "Upah Kerja", "Jumlah (Rp)": 0, "Penerima/Toko": "Mandor Pak Budi"}
+        {"Tanggal": "2026-09-02", "Keperluan": "Pembelian Semen Tahap Awal", "Kategori": "Material", "Jumlah (Rp)": 2500000, "Penerima/Toko": "TB Maju Lancar"},
+        {"Tanggal": "2026-09-12", "Keperluan": "Bayar Upah Tukang Minggu ke-1", "Kategori": "Upah Kerja", "Jumlah (Rp)": 1800000, "Penerima/Toko": "Mandor Pak Budi"}
     ])
 
-# Header Aplikasi
-st.title("🕌 Sistem Informasi Pembangunan Masjid Almirra")
-st.markdown("**Lokasi:** Lingkungan Nglarik RW 09, Kelurahan Kalongan, Kecamatan Purwodadi, Kabupaten Grobogan")
+# Header Modern dengan Logo / Banner Ilustrasi
+col_logo, col_text = st.columns([1, 5])
+with col_logo:
+    st.markdown("# 🕌")
+with col_text:
+    st.markdown("<h2 class='header-title' style='margin-bottom:0;'>Pembangunan Masjid Almirra</h2>", unsafe_allow_html=True)
+    st.markdown("**Lokasi:** Lingkungan Nglarik RW 09, Kel. Kalongan, Kec. Purwodadi, Kab. Grobogan")
+
 st.markdown("---")
 
 # Sidebar Navigasi Menu
-menu = st.sidebar.selectbox("Pilih Menu", ["Dashboard & Ringkasan", "Catat Pemasukan (Donasi)", "Catat Pengeluaran Dana", "Data & Laporan Lengkap"])
+st.sidebar.markdown("### 📌 Menu Navigasi")
+menu = st.sidebar.selectbox("Pilih Halaman", ["Dashboard & Ringkasan", "Catat Pemasukan (Donasi)", "Catat Pengeluaran Dana", "Data & Laporan Lengkap"])
 
 # ================= 1. MENU DASHBOARD =================
 if menu == "Dashboard & Ringkasan":
@@ -43,6 +69,7 @@ if menu == "Dashboard & Ringkasan":
     total_keluar = st.session_state.df_keluar["Jumlah (Rp)"].sum()
     sisa_saldo = total_masuk - total_keluar
 
+    # Kartu Metrik Modern
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Pemasukan / Donasi", f"Rp {total_masuk:,.0f}")
     col2.metric("Total Pengeluaran", f"Rp {total_keluar:,.0f}")
@@ -52,17 +79,17 @@ if menu == "Dashboard & Ringkasan":
     
     col_a, col_b = st.columns(2)
     with col_a:
-        st.markdown("#### 5 Donatur Terakhir")
+        st.markdown("#### 🌟 5 Donatur Terakhir")
         st.dataframe(st.session_state.df_donasi.tail(5), use_container_width=True)
     with col_b:
-        st.markdown("#### Pengeluaran Terakhir")
+        st.markdown("#### 🛠️ Pengeluaran Terakhir")
         st.dataframe(st.session_state.df_keluar.tail(5), use_container_width=True)
 
 # ================= 2. MENU CATAT PEMASUKAN =================
 elif menu == "Catat Pemasukan (Donasi)":
     st.subheader("➕ Tambah Data Donatur / Pemasukan Dana")
 
-    with st.form("form_donasi"):
+    with st.form("form_donasi", clear_on_submit=True):
         tgl = st.date_input("Tanggal Donasi", datetime.today())
         nama = st.text_input("Nama Donatur")
         alamat = st.text_input("Alamat (Contoh: Nglarik RT 02/09 Kalongan)")
@@ -70,7 +97,7 @@ elif menu == "Catat Pemasukan (Donasi)":
         jumlah = st.number_input("Nominal / Estimasi Nilai (Rp)", min_value=0, step=50000)
         keterangan = st.text_input("Keterangan Tambahan (Contoh: 1 Rit Pasir / Transfer BCA)")
 
-        submit_btn = st.form_submit_button("Simpan Data Donatur")
+        submit_btn = st.form_submit_button("💾 Simpan Data Donatur")
 
         if submit_btn:
             if nama and jumlah > 0:
@@ -91,14 +118,14 @@ elif menu == "Catat Pemasukan (Donasi)":
 elif menu == "Catat Pengeluaran Dana":
     st.subheader("➖ Tambah Data Pengeluaran Pembangunan")
 
-    with st.form("form_keluar"):
+    with st.form("form_keluar", clear_on_submit=True):
         tgl_K = st.date_input("Tanggal Pengeluaran", datetime.today())
         keperluan = st.text_input("Keperluan / Nama Barang")
         kategori_k = st.selectbox("Kategori Pengeluaran", ["Material", "Upah Kerja", "Konsumsi", "Lain-lain"])
         jumlah_k = st.number_input("Jumlah Biaya (Rp)", min_value=0, step=50000)
         penerima = st.text_input("Dibayarkan Kepada / Toko")
 
-        submit_keluar = st.form_submit_button("Simpan Pengeluaran")
+        submit_keluar = st.form_submit_button("💾 Simpan Pengeluaran")
 
         if submit_keluar:
             if keperluan and jumlah_k > 0:
@@ -131,5 +158,7 @@ elif menu == "Data & Laporan Lengkap":
         st.markdown("### Rekapitulasi Pengeluaran")
         st.dataframe(st.session_state.df_keluar, use_container_width=True)
 
+        csv_keluar = st.session_state.df_keluar.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Unduh Laporan Pengeluaran (CSV)", csv_keluar, "laporan_pengeluaran_almirra.csv", "text/csv")
         csv_keluar = st.session_state.df_keluar.to_csv(index=False).encode('utf-8')
         st.download_button("📥 Unduh Laporan Pengeluaran (CSV)", csv_keluar, "laporan_pengeluaran_almirra.csv", "text/csv")

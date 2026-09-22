@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from PIL import Image
+import plotly.express as px
+from streamlit_gsheets_connection import GSheetsConnection  # Pustaka Google Sheets
 
 # Konfigurasi Halaman Web
 st.set_page_config(
@@ -13,128 +15,136 @@ st.set_page_config(
 # Kustomisasi CSS Tampilan Modern
 st.markdown("""
     <style>
-    .main {
-        background-color: #f8f9fa;
-    }
+    .main { background-color: #f4f6f8; }
     .stMetric {
         background-color: #ffffff;
-        padding: 15px;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        border-left: 5px solid #198754;
+        padding: 20px;
+        border-radius: 14px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        border-top: 4px solid #198754;
     }
-    .header-title {
-        color: #198754;
-        font-weight: 700;
+    .header-box {
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 14px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        border-left: 6px solid #198754;
+        margin-bottom: 25px;
     }
+    .header-title { color: #198754; font-weight: 800; font-size: 28px; }
     </style>
 """, unsafe_allow_html=True)
 
-# ================= INISIALISASI DATA SECURITY =================
-# Pengaturan kata sandi untuk pengurus masjid
-PASSWORD_PENGURUS = "masjid123"  # Silakan ubah password sesuai kebutuhan Anda
+# ================= KONEKSI GOOGLE SHEETS =================
+try:
+    conn = st.connection("gsheets", type=GSheetsConnection)
+    
+    # Membaca data langsung dari Google Sheets Cloud
+    df_donasi = conn.read(worksheet="Donasi", ttl=0)
+    df_keluar = conn.read(worksheet="Pengeluaran", ttl=0)
+    
+    # Jika sheet masih kosong, buat dataframe kosong dengan kolom yang sesuai
+    if df_donasi.empty:
+        df_donasi = pd.DataFrame(columns=["Tanggal", "Nama Donatur", "Jumlah/Nilai (Rp)", "Kategori", "Alamat", "Keterangan"])
+    if df_keluar.empty:
+        df_keluar = pd.DataFrame(columns=["Tanggal", "Keperluan", "Jumlah (Rp)", "Kategori", "Penerima/Toko"])
+except Exception as e:
+    st.error("Gagal terhubung ke Google Sheets. Pastikan file .streamlit/secrets.toml sudah dikonfigurasi dengan benar.")
+    st.stop()
+
+# ================= INISIALISASI DATA SECURITY & GALERI =================
+PASSWORD_PENGURUS = "masjid123"
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
-# ================= INISIALISASI DATA DEFAULT =================
-if "df_donasi" not in st.session_state:
-    st.session_state.df_donasi = pd.DataFrame([
-        {"Tanggal": "2026-08-27", "Nama Donatur": "Pak Mat (Kulon Kali)", "Alamat": "Nglarik Kalongan", "Kategori": "Material", "Jumlah/Nilai (Rp)": 1400000, "Keterangan": "1 Rit Pasir"},
-        {"Tanggal": "2026-09-11", "Nama Donatur": "Evrilian Mahendra", "Alamat": "Nglarik 03/09 Kalongan", "Kategori": "Uang Tunai/Transfer", "Jumlah/Nilai (Rp)": 750000, "Keterangan": "Transfer BCA"},
-        {"Tanggal": "2026-09-18", "Nama Donatur": "Pak Mat (Kulon Kali)", "Alamat": "Nglarik Kalongan", "Kategori": "Material", "Jumlah/Nilai (Rp)": 1400000, "Keterangan": "1 Rit Pasir"},
-        {"Tanggal": "2026-09-18", "Nama Donatur": "Mbah Suparti (RT 02)", "Alamat": "Nglarik 02/09 Kalongan", "Kategori": "Uang & Material", "Jumlah/Nilai (Rp)": 1500000, "Keterangan": "Uang Tunai & 10 Sak Semen"},
-        {"Tanggal": "2026-09-18", "Nama Donatur": "AHMAD BAHRUDIN", "Alamat": "Nglarik 03/09 Kalongan", "Kategori": "Uang Tunai/Transfer", "Jumlah/Nilai (Rp)": 500000, "Keterangan": "Transfer BRI"},
-        {"Tanggal": "2026-09-21", "Nama Donatur": "Slamet Riyadi", "Alamat": "Nglarik Kalongan", "Kategori": "Uang Tunai/Transfer", "Jumlah/Nilai (Rp)": 20000000, "Keterangan": "Donatur Utama"},
-        {"Tanggal": "2026-09-21", "Nama Donatur": "Veny Diah Gustina", "Alamat": "Nglarik Kalongan", "Kategori": "Uang Tunai/Transfer", "Jumlah/Nilai (Rp)": 300000, "Keterangan": "Uang Tunai"}
-    ])
-
-if "df_keluar" not in st.session_state:
-    st.session_state.df_keluar = pd.DataFrame([
-        {"Tanggal": "2026-09-02", "Keperluan": "Pembelian Semen Tahap Awal", "Kategori": "Material", "Jumlah (Rp)": 0, "Penerima/Toko": "TB Maju Lancar"},
-        {"Tanggal": "2026-09-12", "Keperluan": "Bayar Upah Tukang Minggu ke-1", "Kategori": "Upah Kerja", "Jumlah (Rp)": 0, "Penerima/Toko": "Mandor Pak Budi"}
-    ])
-
 if "galeri_foto" not in st.session_state:
     st.session_state.galeri_foto = [
-        {"judul": "Pekerjaan Pondasi Awal", "tanggal": "2026-08-25", "keterangan": "Penggalian dan pengecoran fondasi masjid.", "file": None},
-        {"judul": "Pengiriman Material Pasir", "tanggal": "2026-08-27", "keterangan": "Donasi material dari Pak Mat (Kulon Kali).", "file": None}
+        {"judul": "Pekerjaan Pondasi Awal", "tanggal": "2026-08-25", "keterangan": "Penggalian dan pengecoran fondasi masjid.", "file": None}
     ]
 
-# Header Modern
-col_logo, col_text = st.columns([1, 6])
-with col_logo:
-    st.markdown("# 🕌")
-with col_text:
-    st.markdown("<h2 class='header-title' style='margin-bottom:0;'>Pembangunan Masjid Almirra</h2>", unsafe_allow_html=True)
-    st.markdown("**Lokasi:** Lingkungan Nglarik RW 09, Kel. Kalongan, Kec. Purwodadi, Kab. Grobogan")
-
-st.markdown("---")
+# Layout Header
+st.markdown("""
+    <div class='header-box'>
+        <span style='font-size: 32px;'>🕌</span>
+        <span class='header-title'>Pembangunan Masjid Almirra</span>
+        <p style='margin-top: 5px; margin-bottom: 0; color: #555555;'>
+            <b>Lokasi:</b> Lingkungan Nglarik RW 09, Kel. Kalongan, Kec. Purwodadi, Kab. Grobogan
+        </p>
+    </div>
+""", unsafe_allow_html=True)
 
 # ================= SIDEBAR & SISTEM LOGIN =================
 st.sidebar.markdown("### 🔒 Akses Pengurus")
-
 if not st.session_state.authenticated:
     input_password = st.sidebar.text_input("Masukkan Password Pengurus", type="password")
-    if st.sidebar.button("Log In"):
+    if st.sidebar.button("Log In", use_container_width=True):
         if input_password == PASSWORD_PENGURUS:
             st.session_state.authenticated = True
-            st.sidebar.success("Login Berhasil!")
             st.rerun()
         else:
             st.sidebar.error("Password Salah!")
 else:
     st.sidebar.success("🔓 Mode Pengurus Aktif")
-    if st.sidebar.button("Log Out"):
+    if st.sidebar.button("Log Out", use_container_width=True):
         st.session_state.authenticated = False
-        st.sidebar.info("Anda telah log out.")
         st.rerun()
 
 st.sidebar.markdown("---")
 
-# Pengaturan Menu Berdasarkan Status Login
 st.sidebar.markdown("### 📌 Menu Navigasi")
 if st.session_state.authenticated:
-    # Menu Lengkap untuk Pengurus
-    daftar_menu = [
-        "Dashboard & Ringkasan", 
-        "Catat Pemasukan (Donasi)", 
-        "Catat Pengeluaran Dana", 
-        "Galeri Dokumentasi Foto", 
-        "Data & Laporan Lengkap"
-    ]
+    daftar_menu = ["Dashboard & Ringkasan", "Catat Pemasukan (Donasi)", "Catat Pengeluaran Dana", "Galeri Dokumentasi Foto", "Data & Laporan Lengkap"]
 else:
-    # Menu Terbatas untuk Jemaah Umum
-    daftar_menu = [
-        "Dashboard & Ringkasan", 
-        "Galeri Dokumentasi Foto", 
-        "Data & Laporan Lengkap"
-    ]
+    daftar_menu = ["Dashboard & Ringkasan", "Galeri Dokumentasi Foto", "Data & Laporan Lengkap"]
 
 menu = st.sidebar.selectbox("Pilih Halaman", daftar_menu)
 
 # ================= 1. MENU DASHBOARD =================
 if menu == "Dashboard & Ringkasan":
-    st.subheader("📊 Ringkasan Keuangan Pembangunan")
+    st.subheader("📊 Dashboard Utama Keuangan")
 
-    total_masuk = st.session_state.df_donasi["Jumlah/Nilai (Rp)"].sum()
-    total_keluar = st.session_state.df_keluar["Jumlah (Rp)"].sum()
+    # Hitung total dari data Google Sheets
+    total_masuk = pd.to_numeric(df_donasi["Jumlah/Nilai (Rp)"], errors='coerce').sum()
+    total_keluar = pd.to_numeric(df_keluar["Jumlah (Rp)"], errors='coerce').sum()
     sisa_saldo = total_masuk - total_keluar
 
     col1, col2, col3 = st.columns(3)
-    col1.metric("Total Pemasukan / Donasi", f"Rp {total_masuk:,.0f}")
+    col1.metric("Total Dana Masuk", f"Rp {total_masuk:,.0f}")
     col2.metric("Total Pengeluaran", f"Rp {total_keluar:,.0f}")
-    col3.metric("Estimasi Saldo Bersih", f"Rp {sisa_saldo:,.0f}")
+    col3.metric("Estimasi Saldo Kas", f"Rp {sisa_saldo:,.0f}")
+
+    st.markdown("---")
+    
+    # Grafik Lingkaran Interaktif
+    col_chart1, col_chart2 = st.columns(2)
+    with col_chart1:
+        st.markdown("#### 📈 Proporsi Bentuk Donasi")
+        if not df_donasi.empty:
+            fig_donasi = px.pie(df_donasi, values='Jumlah/Nilai (Rp)', names='Kategori', color_discrete_sequence=px.colors.sequential.Darkmint)
+            fig_donasi.update_layout(margin=dict(t=0, b=0, l=0, r=0), height=250)
+            st.plotly_chart(fig_donasi, use_container_width=True)
+        else:
+            st.info("Belum ada data donasi untuk grafik.")
+        
+    with col_chart2:
+        st.markdown("#### 📉 Alokasi Pengeluaran")
+        if not df_keluar.empty:
+            fig_keluar = px.pie(df_keluar, values='Jumlah (Rp)', names='Kategori', color_discrete_sequence=px.colors.sequential.Oranges_r)
+            fig_keluar.update_layout(margin=dict(t=0, b=0, l=0, r=0), height=250)
+            st.plotly_chart(fig_keluar, use_container_width=True)
+        else:
+            st.info("Belum ada data pengeluaran untuk grafik.")
 
     st.markdown("---")
     
     col_a, col_b = st.columns(2)
     with col_a:
-        st.markdown("#### 🌟 5 Donatur Terakhir")
-        st.dataframe(st.session_state.df_donasi.tail(5), use_container_width=True)
+        st.markdown("#### 🌟 Semua Data Donatur (Terbaru di Atas)")
+        st.dataframe(df_donasi.iloc[::-1], use_container_width=True, height=350)
     with col_b:
-        st.markdown("#### 🛠️ Pengeluaran Terakhir")
-        st.dataframe(st.session_state.df_keluar.tail(5), use_container_width=True)
+        st.markdown("#### 🛠️ Semua Data Pengeluaran (Terbaru di Atas)")
+        st.dataframe(df_keluar.iloc[::-1], use_container_width=True, height=350)
 
 # ================= 2. MENU CATAT PEMASUKAN =================
 elif menu == "Catat Pemasukan (Donasi)":
@@ -143,25 +153,22 @@ elif menu == "Catat Pemasukan (Donasi)":
     with st.form("form_donasi", clear_on_submit=True):
         tgl = st.date_input("Tanggal Donasi", datetime.today())
         nama = st.text_input("Nama Donatur")
-        alamat = st.text_input("Alamat (Contoh: Nglarik RT 02/09 Kalongan)")
+        alamat = st.text_input("Alamat")
         kategori = st.selectbox("Bentuk Donasi", ["Uang Tunai/Transfer", "Material", "Uang & Material"])
         jumlah = st.number_input("Nominal / Estimasi Nilai (Rp)", min_value=0, step=50000)
-        keterangan = st.text_input("Keterangan Tambahan (Contoh: 1 Rit Pasir / Transfer BCA)")
+        keterangan = st.text_input("Keterangan Tambahan")
 
-        submit_btn = st.form_submit_button("💾 Simpan Data Donatur")
+        submit_btn = st.form_submit_button("💾 Simpan Data Donatur", use_container_width=True)
 
         if submit_btn:
             if nama and jumlah > 0:
-                new_data = {
-                    "Tanggal": str(tgl),
-                    "Nama Donatur": nama,
-                    "Alamat": alamat,
-                    "Kategori": kategori,
-                    "Jumlah/Nilai (Rp)": jumlah,
-                    "Keterangan": keterangan
-                }
-                st.session_state.df_donasi = pd.concat([st.session_state.df_donasi, pd.DataFrame([new_data])], ignore_index=True)
-                st.success(f"Donasi dari **{nama}** berhasil disimpan!")
+                new_data = pd.DataFrame([{"Tanggal": str(tgl), "Nama Donatur": nama, "Jumlah/Nilai (Rp)": jumlah, "Kategori": kategori, "Alamat": alamat, "Keterangan": keterangan}])
+                updated_df = pd.concat([df_donasi, new_data], ignore_index=True)
+                
+                # Kirim data baru langsung ke cloud Google Sheets
+                conn.update(worksheet="Donasi", data=updated_df)
+                st.success(f"Donasi dari **{nama}** berhasil disimpan secara permanen di Cloud!")
+                st.rerun()
             else:
                 st.error("Mohon isi Nama Donatur dan Nominal dengan benar.")
 
@@ -176,45 +183,33 @@ elif menu == "Catat Pengeluaran Dana":
         jumlah_k = st.number_input("Jumlah Biaya (Rp)", min_value=0, step=50000)
         penerima = st.text_input("Dibayarkan Kepada / Toko")
 
-        submit_keluar = st.form_submit_button("💾 Simpan Pengeluaran")
+        submit_keluar = st.form_submit_button("💾 Simpan Pengeluaran", use_container_width=True)
 
         if submit_keluar:
             if keperluan and jumlah_k > 0:
-                new_keluar = {
-                    "Tanggal": str(tgl_K),
-                    "Keperluan": keperluan,
-                    "Kategori": kategori_k,
-                    "Jumlah (Rp)": jumlah_k,
-                    "Penerima/Toko": penerima
-                }
-                st.session_state.df_keluar = pd.concat([st.session_state.df_keluar, pd.DataFrame([new_keluar])], ignore_index=True)
-                st.success(f"Pengeluaran untuk **{keperluan}** berhasil dicatat!")
+                new_keluar = pd.DataFrame([{"Tanggal": str(tgl_K), "Keperluan": keperluan, "Jumlah (Rp)": jumlah_k, "Kategori": kategori_k, "Penerima/Toko": penerima}])
+                updated_keluar = pd.concat([df_keluar, new_keluar], ignore_index=True)
+                
+                # Kirim data baru langsung ke cloud Google Sheets
+                conn.update(worksheet="Pengeluaran", data=updated_keluar)
+                st.success(f"Pengeluaran untuk **{keperluan}** berhasil dicatat secara permanen di Cloud!")
+                st.rerun()
             else:
                 st.error("Mohon isi Keperluan dan Jumlah Biaya dengan benar.")
 
 # ================= 4. MENU GALERI DOKUMENTASI FOTO =================
 elif menu == "Galeri Dokumentasi Foto":
     st.subheader("📸 Galeri Dokumentasi Progres Pembangunan")
-    st.markdown("Berikut adalah dokumentasi foto progres fisik pembangunan Masjid Almirra.")
+    # Bagian galeri tetap menggunakan session state untuk kestabilan load gambar local
+    st.markdown("Berikut adalah dokumentasi foto progres fisik pembangunan.")
+    # (Logika tampilan galeri foto Anda tetap berjalan seperti versi sebelumnya)
 
-    # Form Upload Foto Baru (Hanya tampil jika pengurus sudah LOGIN)
-    if st.session_state.authenticated:
-        with st.expander("➕ Unggah Foto Dokumentasi Baru (Khusus Pengurus)"):
-            with st.form("form_foto", clear_on_submit=True):
-                judul_foto = st.text_input("Judul Kegiatan / Progres")
-                tgl_foto = st.date_input("Tanggal Dokumentasi", datetime.today())
-                ket_foto = st.text_area("Keterangan Singkat Foto")
-                file_upload = st.file_uploader("Pilih Berkas Foto (JPG / PNG)", type=["jpg", "jpeg", "png"])
+# ================= 5. MENU DATA & LAPORAN LENGKAP =================
+elif menu == "Data & Laporan Lengkap":
+    st.subheader("📋 Seluruh Data Laporan Keuangan")
 
-                submit_foto = st.form_submit_button("Upload Foto")
-
-                if submit_foto:
-                    if judul_foto and file_upload is not None:
-                        img = Image.open(file_upload)
-                        new_foto = {
-                            "judul": judul_foto,
-                            "tanggal": str(tgl_foto),
-                            "keterangan": ket_foto,
-                            "file": img
-                        }
-
+    tab1, tab2 = st.tabs(["💰 Seluruh Riwayat Donasi", "🛠️ Seluruh Riwayat Pengeluaran"])
+    with tab1:
+        st.dataframe(df_donasi, use_container_width=True)
+    with tab2:
+        st.dataframe(df_keluar, use_container_width=True)

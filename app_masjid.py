@@ -23,8 +23,8 @@ if "df_donasi" not in st.session_state:
 
 if "df_keluar" not in st.session_state:
     st.session_state.df_keluar = pd.DataFrame([
-        {"Tanggal": "2026-09-02", "Keperluan": "Pembelian Semen Tahap Awal", "Kategori": "Material", "Jumlah (Rp)": 2500000, "Penerima/Toko": "TB Maju Lancar"},
-        {"Tanggal": "2026-09-12", "Keperluan": "Bayar Upah Tukang Minggu ke-1", "Kategori": "Upah Kerja", "Jumlah (Rp)": 1800000, "Penerima/Toko": "Mandor Pak Budi"}
+        {"Tanggal": "2026-09-02", "Keperluan": "Pembelian Semen Tahap Awal", "Kategori": "Material", "Jumlah (Rp)": 0, "Penerima/Toko": "TB Maju Lancar"},
+        {"Tanggal": "2026-09-12", "Keperluan": "Bayar Upah Tukang Minggu ke-1", "Kategori": "Upah Kerja", "Jumlah (Rp)": 0, "Penerima/Toko": "Mandor Pak Budi"}
     ])
 
 # Header Aplikasi

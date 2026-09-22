@@ -30,7 +30,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Inisialisasi Data Default Donasi & Pengeluaran
+# ================= INISIALISASI DATA SECURITY =================
+# Pengaturan kata sandi untuk pengurus masjid
+PASSWORD_PENGURUS = "masjid123"  # Silakan ubah password sesuai kebutuhan Anda
+
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+# ================= INISIALISASI DATA DEFAULT =================
 if "df_donasi" not in st.session_state:
     st.session_state.df_donasi = pd.DataFrame([
         {"Tanggal": "2026-08-27", "Nama Donatur": "Pak Mat (Kulon Kali)", "Alamat": "Nglarik Kalongan", "Kategori": "Material", "Jumlah/Nilai (Rp)": 1400000, "Keterangan": "1 Rit Pasir"},
@@ -44,11 +51,10 @@ if "df_donasi" not in st.session_state:
 
 if "df_keluar" not in st.session_state:
     st.session_state.df_keluar = pd.DataFrame([
-        {"Tanggal": "2026-09-02", "Keperluan": "Pembelian Semen Tahap Awal", "Kategori": "Material", "Jumlah (Rp)": 2500000, "Penerima/Toko": "TB Maju Lancar"},
-        {"Tanggal": "2026-09-12", "Keperluan": "Bayar Upah Tukang Minggu ke-1", "Kategori": "Upah Kerja", "Jumlah (Rp)": 1800000, "Penerima/Toko": "Mandor Pak Budi"}
+        {"Tanggal": "2026-09-02", "Keperluan": "Pembelian Semen Tahap Awal", "Kategori": "Material", "Jumlah (Rp)": 00, "Penerima/Toko": "TB Maju Lancar"},
+        {"Tanggal": "2026-09-12", "Keperluan": "Bayar Upah Tukang Minggu ke-1", "Kategori": "Upah Kerja", "Jumlah (Rp)": 0, "Penerima/Toko": "Mandor Pak Budi"}
     ])
 
-# Inisialisasi Data Galeri Foto Dokumentasi
 if "galeri_foto" not in st.session_state:
     st.session_state.galeri_foto = [
         {"judul": "Pekerjaan Pondasi Awal", "tanggal": "2026-08-25", "keterangan": "Penggalian dan pengecoran fondasi masjid.", "file": None},
@@ -65,15 +71,47 @@ with col_text:
 
 st.markdown("---")
 
-# Sidebar Navigasi Menu
+# ================= SIDEBAR & SISTEM LOGIN =================
+st.sidebar.markdown("### 🔒 Akses Pengurus")
+
+if not st.session_state.authenticated:
+    input_password = st.sidebar.text_input("Masukkan Password Pengurus", type="password")
+    if st.sidebar.button("Log In"):
+        if input_password == PASSWORD_PENGURUS:
+            st.session_state.authenticated = True
+            st.sidebar.success("Login Berhasil!")
+            st.rerun()
+        else:
+            st.sidebar.error("Password Salah!")
+else:
+    st.sidebar.success("🔓 Mode Pengurus Aktif")
+    if st.sidebar.button("Log Out"):
+        st.session_state.authenticated = False
+        st.sidebar.info("Anda telah log out.")
+        st.rerun()
+
+st.sidebar.markdown("---")
+
+# Pengaturan Menu Berdasarkan Status Login
 st.sidebar.markdown("### 📌 Menu Navigasi")
-menu = st.sidebar.selectbox("Pilih Halaman", [
-    "Dashboard & Ringkasan", 
-    "Catat Pemasukan (Donasi)", 
-    "Catat Pengeluaran Dana", 
-    "Galeri Dokumentasi Foto", 
-    "Data & Laporan Lengkap"
-])
+if st.session_state.authenticated:
+    # Menu Lengkap untuk Pengurus
+    daftar_menu = [
+        "Dashboard & Ringkasan", 
+        "Catat Pemasukan (Donasi)", 
+        "Catat Pengeluaran Dana", 
+        "Galeri Dokumentasi Foto", 
+        "Data & Laporan Lengkap"
+    ]
+else:
+    # Menu Terbatas untuk Jemaah Umum
+    daftar_menu = [
+        "Dashboard & Ringkasan", 
+        "Galeri Dokumentasi Foto", 
+        "Data & Laporan Lengkap"
+    ]
+
+menu = st.sidebar.selectbox("Pilih Halaman", daftar_menu)
 
 # ================= 1. MENU DASHBOARD =================
 if menu == "Dashboard & Ringkasan":
@@ -88,15 +126,16 @@ if menu == "Dashboard & Ringkasan":
     col2.metric("Total Pengeluaran", f"Rp {total_keluar:,.0f}")
     col3.metric("Estimasi Saldo Bersih", f"Rp {sisa_saldo:,.0f}")
 
-    st.markdown("---")
+       st.markdown("---")
     
     col_a, col_b = st.columns(2)
     with col_a:
-        st.markdown("#### 🌟 5 Donatur Terakhir")
-        st.dataframe(st.session_state.df_donasi.tail(5), use_container_width=True)
+        st.markdown("#### 🌟 Semua Data Donatur (Terbaru di Atas)")
+        st.dataframe(st.session_state.df_donasi.iloc[::-1], use_container_width=True)
     with col_b:
-        st.markdown("#### 🛠️ Pengeluaran Terakhir")
-        st.dataframe(st.session_state.df_keluar.tail(5), use_container_width=True)
+        st.markdown("#### 🛠️ Semua Data Pengeluaran (Terbaru di Atas)")
+        st.dataframe(st.session_state.df_keluar.iloc[::-1], use_container_width=True)
+
 
 # ================= 2. MENU CATAT PEMASUKAN =================
 elif menu == "Catat Pemasukan (Donasi)":
@@ -159,59 +198,27 @@ elif menu == "Galeri Dokumentasi Foto":
     st.subheader("📸 Galeri Dokumentasi Progres Pembangunan")
     st.markdown("Berikut adalah dokumentasi foto progres fisik pembangunan Masjid Almirra.")
 
-    # Form Upload Foto Baru (Khusus Admin/Pengurus)
-    with st.expander("➕ Unggah Foto Dokumentasi Baru"):
-        with st.form("form_foto", clear_on_submit=True):
-            judul_foto = st.text_input("Judul Kegiatan / Progres")
-            tgl_foto = st.date_input("Tanggal Dokumentasi", datetime.today())
-            ket_foto = st.text_area("Keterangan Singkat Foto")
-            file_upload = st.file_uploader("Pilih Berkas Foto (JPG / PNG)", type=["jpg", "jpeg", "png"])
+    # Form Upload Foto Baru (Hanya tampil jika pengurus sudah LOGIN)
+    if st.session_state.authenticated:
+        with st.expander("➕ Unggah Foto Dokumentasi Baru (Khusus Pengurus)"):
+            with st.form("form_foto", clear_on_submit=True):
+                judul_foto = st.text_input("Judul Kegiatan / Progres")
+                tgl_foto = st.date_input("Tanggal Dokumentasi", datetime.today())
+                ket_foto = st.text_area("Keterangan Singkat Foto")
+                file_upload = st.file_uploader("Pilih Berkas Foto (JPG / PNG)", type=["jpg", "jpeg", "png"])
 
-            submit_foto = st.form_submit_button("Upload Foto")
+                submit_foto = st.form_submit_button("Upload Foto")
 
-            if submit_foto:
-                if judul_foto and file_upload is not None:
-                    new_galeri = {
-                        "judul": judul_foto,
-                        "tanggal": str(tgl_foto),
-                        "keterangan": ket_foto,
-                        "file": file_upload
-                    }
-                    st.session_state.galeri_foto.append(new_galeri)
-                    st.success("Foto dokumentasi berhasil diunggah!")
-                else:
-                    st.error("Mohon isi Judul dan pilih file foto terlebih dahulu.")
+                if submit_foto:
+                    if judul_foto and file_upload is not None:
+                        img = Image.open(file_upload)
+                        new_foto = {
+                            "judul": judul_foto,
+                            "tanggal": str(tgl_foto),
+                            "keterangan": ket_foto,
+                            "file": img
+                        }
 
-    st.markdown("---")
-
-    # Tampilkan Galeri dalam Format Grid (Kolom)
-    cols = st.columns(2)
-    for idx, item in enumerate(st.session_state.galeri_foto):
-        with cols[idx % 2]:
-            st.markdown(f"### 📌 {item['judul']}")
-            st.markdown(f"**Tanggal:** {item['tanggal']}")
-            if item['file'] is not None:
-                st.image(item['file'], use_container_width=True)
-            else:
-                st.info("*(Ilustrasi/Contoh Dokumentasi)*")
-            st.write(item['keterangan'])
-            st.markdown("---")
-
-# ================= 5. MENU LAPORAN LENGKAP =================
-elif menu == "Data & Laporan Lengkap":
-    st.subheader("📋 Laporan Keuangan & Daftar Donatur Masjid Almirra")
-
-    tab1, tab2 = st.tabs(["Daftar Pemasukan (Donatur)", "Daftar Pengeluaran"])
-
-    with tab1:
-        st.markdown("### Rekapitulasi Donatur")
-        st.dataframe(st.session_state.df_donasi, use_container_width=True)
-        
-        csv_donasi = st.session_state.df_donasi.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Unduh Laporan Donatur (CSV)", csv_donasi, "laporan_donatur_almirra.csv", "text/csv")
-
-    with tab2:
-        st.markdown("### Rekapitulasi Pengeluaran")
         st.dataframe(st.session_state.df_keluar, use_container_width=True)
 
         csv_keluar = st.session_state.df_keluar.to_csv(index=False).encode('utf-8')
